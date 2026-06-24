@@ -14,8 +14,7 @@
     "pinia": "^2.1.7",
     "axios": "^1.7.2",
     "chart.js": "^4.4.3",
-    "@mediapipe/face_detection": "^0.4.1646425229",
-    "@mediapipe/camera_utils": "^0.3.1675466862"
+    "@mediapipe/face_detection": "^0.4.1646425229"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.4",

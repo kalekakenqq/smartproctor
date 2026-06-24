@@ -2,14 +2,14 @@
   <div class="camera-box">
     <video ref="videoEl" autoplay playsinline muted class="video"></video>
     <canvas ref="canvasEl" class="hidden-canvas"></canvas>
-    <div v-if="!ready" class="status">Запуск камеры…</div>
+    <div v-if="errorMessage" class="status error">{{ errorMessage }}</div>
+    <div v-else-if="!ready" class="status">Запуск камеры…</div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted } from "vue";
 import { FaceDetection } from "@mediapipe/face_detection";
-import { Camera as MediaPipeCamera } from "@mediapipe/camera_utils";
 
 const props = defineProps({
   startedAt: { type: Number, required: true }, // Date.now() ms when exam started
@@ -19,13 +19,18 @@ const emit = defineEmits(["violation"]);
 const videoEl = ref(null);
 const canvasEl = ref(null);
 const ready = ref(false);
+const errorMessage = ref("");
 
 const YAW_THRESHOLD_DEGREES = 30;
 const ABSENCE_FRAMES_THRESHOLD = 10; // ~consecutive frames with no face
 const COOLDOWN_MS = 5000;
+const DETECTION_INTERVAL_MS = 200;
 
 let faceDetection = null;
-let camera = null;
+let mediaStream = null;
+let rafId = null;
+let detecting = false;
+let lastDetectAt = 0;
 let absentFrameCount = 0;
 const lastEmittedAt = { face_absent: 0, face_away: 0, multiple_faces: 0 };
 
@@ -91,26 +96,60 @@ function onResults(results) {
   }
 }
 
-onMounted(async () => {
-  faceDetection = new FaceDetection({
-    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`,
+async function requestCameraAccess() {
+  mediaStream = await navigator.mediaDevices.getUserMedia({
+    video: { width: 640, height: 480, facingMode: "user" },
+    audio: false,
   });
-  faceDetection.setOptions({ model: "short", minDetectionConfidence: 0.5 });
-  faceDetection.onResults(onResults);
+  videoEl.value.srcObject = mediaStream;
+  await videoEl.value.play();
+}
 
-  camera = new MediaPipeCamera(videoEl.value, {
-    onFrame: async () => {
-      await faceDetection.send({ image: videoEl.value });
-    },
-    width: 640,
-    height: 480,
-  });
-  await camera.start();
+function detectLoop(timestamp) {
+  rafId = requestAnimationFrame(detectLoop);
+
+  if (!videoEl.value || videoEl.value.readyState < 2 || detecting) return;
+  if (timestamp - lastDetectAt < DETECTION_INTERVAL_MS) return;
+  lastDetectAt = timestamp;
+
+  detecting = true;
+  faceDetection
+    .send({ image: videoEl.value })
+    .catch((err) => console.error("Ошибка детекции лица:", err))
+    .finally(() => {
+      detecting = false;
+    });
+}
+
+onMounted(async () => {
+  try {
+    await requestCameraAccess();
+  } catch (err) {
+    errorMessage.value =
+      err.name === "NotAllowedError"
+        ? "Доступ к камере запрещён. Разрешите доступ в настройках браузера."
+        : "Не удалось получить доступ к камере: " + (err.message || err.name);
+    return;
+  }
+
+  try {
+    faceDetection = new FaceDetection({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`,
+    });
+    faceDetection.setOptions({ model: "short", minDetectionConfidence: 0.5 });
+    faceDetection.onResults(onResults);
+  } catch (err) {
+    errorMessage.value = "Не удалось загрузить модуль детекции лица";
+    return;
+  }
+
+  rafId = requestAnimationFrame(detectLoop);
 });
 
 onUnmounted(() => {
-  if (camera) camera.stop();
+  if (rafId) cancelAnimationFrame(rafId);
   if (faceDetection) faceDetection.close();
+  if (mediaStream) mediaStream.getTracks().forEach((track) => track.stop());
 });
 </script>
 
@@ -121,6 +160,7 @@ onUnmounted(() => {
   border-radius: 10px;
   overflow: hidden;
   background: #000;
+  min-height: 240px;
 }
 .video {
   width: 100%;
@@ -137,5 +177,10 @@ onUnmounted(() => {
   transform: translate(-50%, -50%);
   color: #fff;
   font-size: 13px;
+  text-align: center;
+  padding: 0 16px;
+}
+.status.error {
+  color: #fca5a5;
 }
 </style>
