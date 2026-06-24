@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.db
+.venv/
+venv/
+node_modules/
+dist/
+.env
+snapshots/*.jpg
+!snapshots/.gitkeep
+.claude/settings.local.json
