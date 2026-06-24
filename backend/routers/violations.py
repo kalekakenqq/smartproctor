@@ -18,7 +18,7 @@ from backend.services.ws_manager import manager
 router = APIRouter(prefix="/violations", tags=["violations"])
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-SNAPSHOTS_DIR = os.path.join(BASE_DIR, "snapshots")
+SNAPSHOTS_DIR = os.environ.get("SNAPSHOTS_DIR", os.path.join(BASE_DIR, "snapshots"))
 os.makedirs(SNAPSHOTS_DIR, exist_ok=True)
 
 

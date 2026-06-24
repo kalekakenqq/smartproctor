@@ -10,7 +10,7 @@ from backend.routers import auth, tests, sessions, violations, reports, ws
 Base.metadata.create_all(bind=engine)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SNAPSHOTS_DIR = os.path.join(BASE_DIR, "snapshots")
+SNAPSHOTS_DIR = os.environ.get("SNAPSHOTS_DIR", os.path.join(BASE_DIR, "snapshots"))
 os.makedirs(SNAPSHOTS_DIR, exist_ok=True)
 
 app = FastAPI(title="SmartProctor API")
@@ -36,3 +36,8 @@ app.include_router(ws.router)
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+FRONTEND_DIST = os.path.join(BASE_DIR, "frontend", "dist")
+if os.path.isdir(FRONTEND_DIST):
+    app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")
