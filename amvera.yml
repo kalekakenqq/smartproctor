@@ -1,22 +1,19 @@
 meta:
-  environments:
-    - environment: node
-      toolchain:
-        name: npm
-        version: "20"
+  environment: python
+  toolchain:
+    - name: node
+      version: "20"
       buildFirst: true
-    - environment: python
-      toolchain:
-        name: pip
-        version: "3.11"
+    - name: python
+      version: "3.11"
 
 build:
-  - cd frontend && npm install && npm run build
-  - pip install -r requirements.txt
+  command: cd frontend && npm install && npm run build && cd .. && pip install -r requirements.txt
 
 run:
-  command: uvicorn backend.main:app --host 0.0.0.0 --port 8080
+  command: uvicorn backend.main:app --host 0.0.0.0 --port 80
   persistenceMount: /data
+  containerPort: 80
   env:
     SNAPSHOTS_DIR: /data/snapshots
     DATABASE_URL: sqlite:////data/smartproctor.db
