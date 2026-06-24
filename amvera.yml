@@ -1,14 +1,11 @@
 meta:
   environment: python
-  toolchain:
-    - name: node
-      version: "20"
-      buildFirst: true
-    - name: python
-      version: "3.11"
+  toolchain: node
 
 build:
   command: cd frontend && npm install && npm run build && cd .. && pip install -r requirements.txt
+  version: "3.11"
+  nodeVersion: "20"
 
 run:
   command: uvicorn backend.main:app --host 0.0.0.0 --port 80
@@ -17,4 +14,3 @@ run:
   env:
     SNAPSHOTS_DIR: /data/snapshots
     DATABASE_URL: sqlite:////data/smartproctor.db
-    # JWT_SECRET_KEY задаётся в переменных окружения проекта Amvera (UI), а не здесь
